@@ -38,6 +38,7 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.8.0")
     implementation("org.jsoup:jsoup:1.14.3")
+    implementation("androidx.appcompat:appcompat:1.3.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
