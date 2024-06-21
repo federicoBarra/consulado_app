@@ -1,2 +1,2 @@
 # consulado_app
-An basic android app to check when a web page has changed.
+An basic hacked hacked android app to check when a <b>certain</b> web page has changed.
