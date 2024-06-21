@@ -16,23 +16,17 @@ import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
 
 class MainActivity : AppCompatActivity() {
+    var CHANNEL_FRONT_ID :String = "front_channel"
+    var CHANNEL_ID :String = "channel_01"
 
     enum class ActionToDo {
         Fetch, Check, Error
@@ -44,26 +38,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var  buttonOn: Button
     private lateinit var  buttonOff: Button
     private lateinit var  buttonTestNow: Button
-    private lateinit var  buttonSaveLast: Button
-    private lateinit var  buttonCheck: Button
-
-    //var path: String = "https://www.cgeonline.com.ar/informacion/apertura-de-citas.html"
-    lateinit var fetchedData: String
-    var CHANNEL_ID :String = "channel_01"
-    var CHANNEL_FRONT_ID :String = "front_channel"
 
     private lateinit var localBroadcastManager: LocalBroadcastManager
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val message = intent.getStringExtra("message")
-            // Call a method in your activity
+            val interval = intent.getStringExtra("interval")
+            val fetchedData = intent.getStringExtra("fetchedData")
+
             val date = Calendar.getInstance().time
             val formatter = SimpleDateFormat.getDateTimeInstance() //or use getDateInstance()
             val formatedDate = formatter.format(date)
-            textFeedback.text = formatedDate + message
+            textLastText.text = fetchedData
+
+            Feedback("$formatedDate \n $message \n Service is on. Refresh every $interval minutes.")
         }
     }
-
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,41 +75,6 @@ class MainActivity : AppCompatActivity() {
         val filter = IntentFilter("com.example.UPDATE_STATUS_TEXT")
         localBroadcastManager.registerReceiver(receiver, filter)
     }
-
-    private fun FreakOut()
-    {
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(androidx.core.R.drawable.notification_icon_background)
-            .setContentTitle("CORRE")
-            .setContentText("CORRE GUACHO DALE")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-
-        with(NotificationManagerCompat.from(this)) {
-            if (ActivityCompat.checkSelfPermission(
-                    this@MainActivity,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                println("WTF!!!!")
-                return@with
-            }
-            // notificationId is a unique int for each notification that you must define.
-            notify(1, builder.build())
-        }
-    }
-
-    private fun SaveLast()
-    {
-        Feedback("SaveLast")
-        print("Hello, world!")
-        fetchHtml(ActionToDo.Fetch)
-    }
-    private fun Check()
-    {
-        Feedback("Check")
-        print("Check, world!")
-        fetchHtml(ActionToDo.Check)
-    }
     private fun TurnOn()
     {
         Feedback("TurnOn")
@@ -134,72 +89,14 @@ class MainActivity : AppCompatActivity() {
     }
     private fun Test()
     {
-        FreakOut()
-        Feedback("FreakOut")
+        Feedback("Test, nothing done")
     }
     private fun Feedback(s:String)
     {
         textFeedback.text = s
     }
 
-    private fun fetchHtml(wantedAction : ActionToDo) {
-        // Launch a coroutine to perform the network operation
-        var actionToDo : ActionToDo
-        actionToDo = wantedAction
-        var data = ""
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val url = "https://www.cgeonline.com.ar/informacion/apertura-de-citas.html"  // Replace with the URL you want to check
-                val doc: Document = Jsoup.connect(url).get()
-
-                // Extract information from the document
-//                val title = doc.title()
-//                val elementText = doc.selectFirst("div.some-class")?.text() ?: "Element not found."
-                val tdElement = doc.selectFirst("td:contains(Pasaportes)")
-
-                if (tdElement != null) {
-                    for (element in tdElement.siblingElements()) {
-                        data += element.text() + "\n" // Concatenate text from sibling elements
-                    }
-                } else {
-                    data = "Element not found."
-                    actionToDo = ActionToDo.Error
-                }
-                // Update the UI on the main thread
-                withContext(Dispatchers.Main) {
-                    Feedback(data)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                actionToDo = ActionToDo.Error
-                withContext(Dispatchers.Main) {
-                    Feedback("Error fetching the web page.")
-                }
-            }
-
-            if (actionToDo == ActionToDo.Check && fetchedData == "")
-            {
-                actionToDo = ActionToDo.Fetch
-            }
-
-            when (actionToDo) {
-                ActionToDo.Fetch -> fetchedData = data
-                ActionToDo.Check -> {
-                    if (fetchedData != data)
-                    {
-                        Feedback("GO CHECK")
-                    }
-                }
-                ActionToDo.Error -> {
-                    Feedback("ERROR!!!")
-                }
-            }
-        }
-    }
-
     private fun CreateNotificationChannel() {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is not in the Support Library.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             println("CreateNotificationChannel")
             val channel = NotificationChannel(CHANNEL_ID, "CORRE", NotificationManager.IMPORTANCE_DEFAULT)
@@ -212,8 +109,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun CreateFrontNotificationChannel() {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is not in the Support Library.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             println("CreateFrontNotificationChannel")
             val channel = NotificationChannel(CHANNEL_FRONT_ID, "FRONT", NotificationManager.IMPORTANCE_HIGH)
@@ -258,7 +153,7 @@ class MainActivity : AppCompatActivity() {
     private fun InitRefs()
     {
         textLastText = findViewById(R.id.last_text)
-        textFeedback = findViewById(R.id.text_feedback)
+        textFeedback = findViewById(R.id.text_status)
 
         buttonOn = findViewById(R.id.button_turn_on)
         buttonOn.setOnClickListener { TurnOn()}
@@ -266,9 +161,87 @@ class MainActivity : AppCompatActivity() {
         buttonOff.setOnClickListener { TurnOff()}
         buttonTestNow = findViewById(R.id.button_test_now)
         buttonTestNow.setOnClickListener { Test()}
-        buttonSaveLast = findViewById(R.id.button_save_last)
-        buttonSaveLast.setOnClickListener { SaveLast()}
-        buttonCheck = findViewById(R.id.button_check)
-        buttonCheck.setOnClickListener { Check()}
     }
 }
+
+//var path: String = "https://www.cgeonline.com.ar/informacion/apertura-de-citas.html"
+//lateinit var fetchedData: String
+
+
+
+//    private fun FreakOut()
+//    {
+//        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+//            .setSmallIcon(androidx.core.R.drawable.notification_icon_background)
+//            .setContentTitle("CORRE")
+//            .setContentText("CORRE GUACHO DALE")
+//            .setPriority(NotificationCompat.PRIORITY_HIGH)
+//
+//        with(NotificationManagerCompat.from(this)) {
+//            if (ActivityCompat.checkSelfPermission(
+//                    this@MainActivity,
+//                    Manifest.permission.POST_NOTIFICATIONS
+//                ) != PackageManager.PERMISSION_GRANTED
+//            ) {
+//                println("WTF!!!!")
+//                return@with
+//            }
+//            // notificationId is a unique int for each notification that you must define.
+//            notify(1, builder.build())
+//        }
+//    }
+
+//          private fun fetchHtml(wantedAction : ActionToDo) {
+//        // Launch a coroutine to perform the network operation
+//        var actionToDo : ActionToDo
+//        actionToDo = wantedAction
+//        var data = ""
+//        CoroutineScope(Dispatchers.IO).launch {
+//            try {
+//                val url = "https://www.cgeonline.com.ar/informacion/apertura-de-citas.html"  // Replace with the URL you want to check
+//                val doc: Document = Jsoup.connect(url).get()
+//
+//                // Extract information from the document
+////                val title = doc.title()
+////                val elementText = doc.selectFirst("div.some-class")?.text() ?: "Element not found."
+//                val tdElement = doc.selectFirst("td:contains(Pasaportes)")
+//
+//                if (tdElement != null) {
+//                    for (element in tdElement.siblingElements()) {
+//                        data += element.text() + "\n" // Concatenate text from sibling elements
+//                    }
+//                } else {
+//                    data = "Element not found."
+//                    actionToDo = ActionToDo.Error
+//                }
+//                // Update the UI on the main thread
+//                withContext(Dispatchers.Main) {
+//                    Feedback(data)
+//                }
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//                actionToDo = ActionToDo.Error
+//                withContext(Dispatchers.Main) {
+//                    Feedback("Error fetching the web page.")
+//                }
+//            }
+//
+//            if (actionToDo == ActionToDo.Check && fetchedData == "")
+//            {
+//                actionToDo = ActionToDo.Fetch
+//            }
+//
+//            when (actionToDo) {
+//                ActionToDo.Fetch -> fetchedData = data
+//                ActionToDo.Check -> {
+//                    if (fetchedData != data)
+//                    {
+//                        Feedback("GO CHECK")
+//                    }
+//                }
+//                ActionToDo.Error -> {
+//                    Feedback("ERROR!!!")
+//                }
+//            }
+//        }
+//    }

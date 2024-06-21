@@ -28,12 +28,12 @@ class FedeService : Service() {
     companion object {
         private const val TAG = "FedeService"
         private const val SHORT_INTERVAL: Long = 30 * 1000 // 30sec in milliseconds
-        private const val LONG_INTERVAL: Long = 60 * 60 * 1000 // 30sec in milliseconds
+        private const val LONG_INTERVAL: Long = 30 * 60 * 1000 // 30 min in milliseconds
     }
     var sleepInterval: Long = 0;
     var CHANNEL_FRONT_ID :String = "front_channel";
     var CHANNEL_ID :String = "channel_01";
-    lateinit var fetchedData: String
+    var fetchedData: String = ""
 
     private lateinit var mediaPlayer: MediaPlayer
 
@@ -48,7 +48,7 @@ class FedeService : Service() {
             fetchHtml(MainActivity.ActionToDo.Check)
 
             // Schedule the next execution
-            handler.postDelayed(this, SHORT_INTERVAL)
+            handler.postDelayed(this, sleepInterval)
         }
     }
 
@@ -58,8 +58,8 @@ class FedeService : Service() {
         val cal = Calendar.getInstance()
         cal.time = date
         val hours = cal.get(Calendar.HOUR_OF_DAY)
-
-        return hours > 7;
+        println(hours)
+        return hours > 7 && hours < 16;
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -130,9 +130,9 @@ class FedeService : Service() {
                     actionToDo = MainActivity.ActionToDo.Error
                 }
                 // Update the UI on the main thread
-                withContext(Dispatchers.Main) {
-                    BroadcastToApp(data)
-                }
+//                withContext(Dispatchers.Main) {
+//                    BroadcastToApp(data)
+//                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 actionToDo = MainActivity.ActionToDo.Error
@@ -147,10 +147,14 @@ class FedeService : Service() {
             }
 
             when (actionToDo) {
-                MainActivity.ActionToDo.Fetch -> fetchedData = data
+                MainActivity.ActionToDo.Fetch -> {
+                    fetchedData = data
+                    BroadcastToApp("Data Fetched")
+                }
                 MainActivity.ActionToDo.Check -> {
                     if (fetchedData != data)
                     {
+                        BroadcastToApp("FREAK OUT!!!")
                         FreakOut()
                     }
                 }
@@ -169,7 +173,7 @@ class FedeService : Service() {
         //textFeedback.text = s
         val intent = Intent("com.example.UPDATE_STATUS_TEXT")
         intent.putExtra("message", s)
-        intent.putExtra("interval", sleepInterval/1000/60)
+        intent.putExtra("interval", (sleepInterval/1000/60).toString())
         intent.putExtra("fetchedData", fetchedData)
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
     }
